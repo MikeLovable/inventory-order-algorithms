@@ -6,9 +6,9 @@ import {
   setSELECTEDALGORITHM,
   ProductionScenarioArray,
   OrderScheduleArray
-} from '../shared/types';
-import { GetProductionScenarios } from '../shared/DataSources';
-import { algorithms } from '../shared/Algorithms';
+} from '../../src/shared/types';
+import { GetProductionScenarios } from '../../src/shared/DataSources';
+import { algorithms } from '../../src/shared/Algorithms';
 
 /**
  * API Gateway Lambda handler

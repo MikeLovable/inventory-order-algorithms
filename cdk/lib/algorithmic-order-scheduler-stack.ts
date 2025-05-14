@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
@@ -28,15 +29,22 @@ export class AlgorithmicOrderSchedulerStack extends cdk.Stack {
           blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
         });
 
-    // Create the Lambda function for the API
-    const apiHandler = new lambda.Function(this, 'AlgorithmicOrderSchedulerFunction', {
+    // Create the Lambda function for the API using NodejsFunction
+    const apiHandler = new nodejs.NodejsFunction(this, 'AlgorithmicOrderSchedulerFunction', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda')),
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/index.ts'), // Path to the lambda code
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       environment: {
         NODE_ENV: 'production',
+      },
+      bundling: {
+        externalModules: [], // Include all modules in the bundle
+        nodeModules: [],
+        minify: true,
+        sourceMap: true,
+        tsconfig: path.join(__dirname, '../tsconfig.json'),
       },
     });
 
@@ -90,15 +98,14 @@ export class AlgorithmicOrderSchedulerStack extends cdk.Stack {
         domainName: domainName,
       });
       
-      // Create certificate
-      certificate = new acm.DnsValidatedCertificate(this, 'Certificate', {
+      // Create certificate using non-deprecated class
+      certificate = new acm.Certificate(this, 'Certificate', {
         domainName: props.CustomDomain,
-        hostedZone: hostedZone,
-        region: 'us-east-1', // CloudFront requires certificates in us-east-1
+        validation: acm.CertificateValidation.fromDns(hostedZone),
       });
     }
 
-    // Create CloudFront distribution
+    // Create CloudFront distribution with non-deprecated origin
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
         origin: new origins.S3Origin(originBucket, {
