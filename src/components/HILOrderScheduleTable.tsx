@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Algorithm } from '@/shared/Algorithm';
 
-interface ManualOrderScheduleTableProps {
+interface HILOrderScheduleTableProps {
   orderSchedules: OrderScheduleArray;
   onOrderSchedulesChange: (updatedSchedules: OrderScheduleArray) => void;
 }
@@ -13,10 +13,10 @@ interface ManualOrderScheduleTableProps {
 /**
  * Table component to display editable order schedules
  */
-export default function ManualOrderScheduleTable({ 
+export default function HILOrderScheduleTable({ 
   orderSchedules, 
   onOrderSchedulesChange 
-}: ManualOrderScheduleTableProps) {
+}: HILOrderScheduleTableProps) {
   const periods = getPERIODS();
   const { toast } = useToast();
   const [hoveredCell, setHoveredCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
@@ -57,17 +57,49 @@ export default function ManualOrderScheduleTable({
     return '';
   };
 
+  // Find the nearest compliant order quantity (for up or down adjustment)
+  const findNearestCompliantQuantity = (
+    value: number,
+    moq: number,
+    pkQty: number,
+    direction: 'up' | 'down'
+  ): number => {
+    if (value <= 0) return 0;
+    
+    // If the value is below MOQ
+    if (value < moq) {
+      if (direction === 'up') {
+        return moq;
+      } else {
+        return 0; // No lower compliant value exists
+      }
+    }
+    
+    // Calculate the nearest multiple of PkQty
+    const remainder = value % pkQty;
+    if (remainder === 0) return value; // Already compliant
+    
+    if (direction === 'up') {
+      return value + (pkQty - remainder);
+    } else {
+      // If going down would put us below MOQ, return either MOQ or 0
+      const potentialValue = value - remainder;
+      return potentialValue >= moq ? potentialValue : 0;
+    }
+  };
+
   // Updates an order quantity ensuring it meets MOQ and PkQty rules
   const handleOrderQuantityChange = (
     scheduleIndex: number, 
     weekIndex: number, 
-    value: string
+    rawValue: string,
+    direction?: 'up' | 'down'
   ) => {
     const updatedSchedules = [...orderSchedules];
     const schedule = updatedSchedules[scheduleIndex];
     
     // Parse value
-    let newValue = parseInt(value);
+    let newValue = parseInt(rawValue);
     
     // Handle invalid input
     if (isNaN(newValue)) {
@@ -75,9 +107,30 @@ export default function ManualOrderScheduleTable({
     }
     
     const { MOQ, PkQty } = schedule;
+    const oldValue = schedule.Ord[weekIndex];
     
-    // Check for compliance with MOQ and PkQty rules
-    if (newValue > 0) {
+    // If direction is specified, we're coming from spinner buttons
+    if (direction) {
+      const compliantValue = findNearestCompliantQuantity(newValue, MOQ, PkQty, direction);
+      
+      if (compliantValue !== newValue) {
+        if (compliantValue === 0) {
+          toast({
+            title: "Order Adjusted to Zero",
+            description: `No lower compliant value exists (MOQ: ${MOQ}, PkQty: ${PkQty})`
+          });
+        } else {
+          toast({
+            title: "Order Adjusted",
+            description: `Adjusted to ${direction === 'up' ? 'next' : 'previous'} compliant value (MOQ: ${MOQ}, PkQty: ${PkQty})`
+          });
+        }
+      }
+      
+      newValue = compliantValue;
+    } 
+    // Direct input validation
+    else if (newValue > 0) {
       // Must be at least MOQ
       if (newValue < MOQ) {
         newValue = MOQ;
@@ -105,27 +158,42 @@ export default function ManualOrderScheduleTable({
           description: `Order must be a multiple of PkQty (${PkQty})`
         });
       }
-    } else {
-      // Zero is allowed
-      newValue = 0;
     }
     
-    // Update the order
-    updatedSchedules[scheduleIndex] = {
-      ...schedule,
-      Ord: schedule.Ord.map((ord, i) => i === weekIndex ? newValue : ord)
-    };
-    
-    // Recalculate Rec and Inv based on the order change
-    updatedSchedules[scheduleIndex] = recalculateOrderImpacts(updatedSchedules[scheduleIndex]);
-    
-    onOrderSchedulesChange(updatedSchedules);
+    // Only update if the value has changed
+    if (oldValue !== newValue) {
+      // Update the order
+      updatedSchedules[scheduleIndex] = {
+        ...schedule,
+        Ord: schedule.Ord.map((ord, i) => i === weekIndex ? newValue : ord)
+      };
+      
+      // Recalculate Rec and Inv based on the order change
+      updatedSchedules[scheduleIndex] = recalculateOrderImpacts(updatedSchedules[scheduleIndex]);
+      
+      onOrderSchedulesChange(updatedSchedules);
+    }
   };
 
   // Recalculates the Rec and Inv values for a schedule after Ord changes
   const recalculateOrderImpacts = (schedule: OrderSchedule): OrderSchedule => {
     const algo = new TempAlgorithm("Temp", "Temporary algorithm for recalculation");
     return algo.calculateOrderScheduleImpacts(schedule);
+  };
+
+  // Handlers for spinner up and down buttons
+  const handleInputStepUp = (scheduleIndex: number, weekIndex: number, event: React.MouseEvent) => {
+    const input = event.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+    const currentValue = parseInt(input.value);
+    const newValue = currentValue + 1; // Increment by 1
+    handleOrderQuantityChange(scheduleIndex, weekIndex, newValue.toString(), 'up');
+  };
+
+  const handleInputStepDown = (scheduleIndex: number, weekIndex: number, event: React.MouseEvent) => {
+    const input = event.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+    const currentValue = parseInt(input.value);
+    const newValue = Math.max(0, currentValue - 1); // Decrement by 1, but not below 0
+    handleOrderQuantityChange(scheduleIndex, weekIndex, newValue.toString(), 'down');
   };
 
   return (
@@ -293,17 +361,29 @@ export default function ManualOrderScheduleTable({
                       }`}
                       onMouseEnter={() => setHoveredCell({ rowIndex: scheduleIndex * 7 + 4, colIndex: i + 5 })}
                     >
-                      <Input 
-                        type="number"
-                        min="0"
-                        className="h-6 p-1 text-right"
-                        value={value}
-                        onChange={(e) => handleOrderQuantityChange(
-                          scheduleIndex, 
-                          i, 
-                          e.target.value
-                        )}
-                      />
+                      <div className="flex">
+                        <Input 
+                          type="number"
+                          min="0"
+                          className="h-6 p-1 text-right"
+                          value={value}
+                          onChange={(e) => handleOrderQuantityChange(
+                            scheduleIndex, 
+                            i, 
+                            e.target.value
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <button 
+                            className="h-3 text-xs flex items-center justify-center"
+                            onClick={(e) => handleInputStepUp(scheduleIndex, i, e)}
+                          >▲</button>
+                          <button 
+                            className="h-3 text-xs flex items-center justify-center"
+                            onClick={(e) => handleInputStepDown(scheduleIndex, i, e)}
+                          >▼</button>
+                        </div>
+                      </div>
                     </td>
                   ))}
                 </tr>

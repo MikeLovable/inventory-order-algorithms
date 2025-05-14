@@ -18,6 +18,9 @@ export class AlgorithmicOrderSchedulerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: LovableStackProps) {
     super(scope, id, props);
 
+    // Set correct origin base path
+    const originBasePath = props.OriginBasePath || "LovableApps/AlgorithmicOrderScheduler";
+
     // Create or use the provided S3 bucket for the React UI
     const originBucket = props.OriginBucket
       ? s3.Bucket.fromBucketName(this, 'OriginBucket', props.OriginBucket)
@@ -108,8 +111,8 @@ export class AlgorithmicOrderSchedulerStack extends cdk.Stack {
     // Create CloudFront distribution with non-deprecated origin
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(originBucket, {
-          originPath: `/${props.OriginBasePath}`,
+        origin: new origins.S3BucketOrigin(originBucket, {
+          originPath: `/${originBasePath}`,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: true,
@@ -174,7 +177,7 @@ export class AlgorithmicOrderSchedulerStack extends cdk.Stack {
     });
     
     new cdk.CfnOutput(this, 'OriginPath', {
-      value: props.OriginBasePath,
+      value: originBasePath,
       description: 'S3 Origin Path for UI',
     });
   }

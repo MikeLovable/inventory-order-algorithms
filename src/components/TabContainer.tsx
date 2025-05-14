@@ -3,19 +3,19 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DataConfigTab from './DataConfigTab';
 import BatchTab from './BatchTab';
-import ManualTab from './ManualTab';
-import ManualOutputTab from './ManualOutputTab';
+import HumanInTheLoopTab from './HumanInTheLoopTab';
+import HILOutputTab from './HILOutputTab';
 
 /**
  * Main tab container for the application
  */
 export default function TabContainer() {
-  const [activeTab, setActiveTab] = useState("manual");
+  const [activeTab, setActiveTab] = useState("humanInTheLoop");
 
   return (
     <div className="w-full">
       <Tabs 
-        defaultValue="manual" 
+        defaultValue="humanInTheLoop" 
         className="w-full"
         value={activeTab}
         onValueChange={setActiveTab}
@@ -23,8 +23,8 @@ export default function TabContainer() {
         <TabsList className="w-full justify-start">
           <TabsTrigger value="dataConfig">Data/Config</TabsTrigger>
           <TabsTrigger value="batch">Batch</TabsTrigger>
-          <TabsTrigger value="manual">Manual</TabsTrigger>
-          <TabsTrigger value="manualOutput">ManualOutput</TabsTrigger>
+          <TabsTrigger value="humanInTheLoop">Human In The Loop</TabsTrigger>
+          <TabsTrigger value="hilOutput">HIL Output</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dataConfig">
@@ -35,12 +35,12 @@ export default function TabContainer() {
           <BatchTab />
         </TabsContent>
         
-        <TabsContent value="manual">
-          <ManualTab />
+        <TabsContent value="humanInTheLoop">
+          <HumanInTheLoopTab />
         </TabsContent>
         
-        <TabsContent value="manualOutput">
-          <ManualOutputTab />
+        <TabsContent value="hilOutput">
+          <HILOutputTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -32,8 +32,11 @@ export async function buildAndUpload(options: BuildUploadOptions): Promise<void>
     // Initialize S3 client
     const s3 = new AWS.S3();
     
+    // Make sure the destination path exists
+    const destPath = basePath.startsWith('/') ? basePath.substring(1) : basePath;
+    
     // Upload files recursively
-    await uploadDir(s3, buildDir, bucketName, basePath);
+    await uploadDir(s3, buildDir, bucketName, destPath);
     
     console.log('Upload successful.');
   } catch (error) {
@@ -63,7 +66,10 @@ async function uploadDir(
       await uploadDir(s3, filePath, bucketName, basePath, path.join(prefix, file));
     } else {
       // Upload file
-      const s3Key = path.join(basePath, prefix, file);
+      const s3Key = prefix 
+        ? path.join(basePath, prefix, file).replace(/\\/g, '/') 
+        : path.join(basePath, file).replace(/\\/g, '/');
+      
       const contentType = mime.lookup(filePath) || 'application/octet-stream';
       
       console.log(`Uploading ${filePath} to s3://${bucketName}/${s3Key}`);

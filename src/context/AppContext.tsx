@@ -1,140 +1,137 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  getPERIODS, 
-  setPERIODS, 
-  getSAMPLES, 
-  setSAMPLES,
-  getSELECTEDDATASOURCE, 
-  setSELECTEDDATASOURCE,
-  getSELECTEDALGORITHM,
-  setSELECTEDALGORITHM,
-  DataSource,
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import {
   ProductionScenarioArray,
   OrderScheduleArray,
-  PERIODS_DEFAULT,
-  SAMPLES_DEFAULT
+  DataSource,
+  setPERIODS,
+  setSAMPLES,
+  setSELECTEDDATASOURCE,
+  setSELECTEDALGORITHM,
+  getPERIODS,
+  getSAMPLES,
+  generateRandomProductionScenarioArray
 } from '@/shared/types';
-import { SmartReplenishAlgorithm, algorithms } from '@/shared/Algorithms';
-import { RandomDataSource, dataSources } from '@/shared/DataSources';
+import { algorithms } from '@/shared/Algorithms';
+import { dataSources } from '@/shared/DataSources';
 
+// Define the context type
 interface AppContextType {
-  apiBaseUrl: string;
-  setApiBaseUrl: (url: string) => void;
-  periods: number;
-  setPeriods: (value: number) => void;
-  samples: number;
-  setSamples: (value: number) => void;
-  selectedDataSource: DataSource;
-  setSelectedDataSource: (source: DataSource) => void;
-  selectedAlgorithm: string;
-  setSelectedAlgorithm: (name: string) => void;
   productionScenarios: ProductionScenarioArray;
-  setProductionScenarios: (scenarios: ProductionScenarioArray) => void;
+  setProductionScenarios: React.Dispatch<React.SetStateAction<ProductionScenarioArray>>;
+  
   orderSchedules: OrderScheduleArray;
-  setOrderSchedules: (schedules: OrderScheduleArray) => void;
-  manualOrderSchedules: OrderScheduleArray;
-  setManualOrderSchedules: (schedules: OrderScheduleArray) => void;
+  setOrderSchedules: React.Dispatch<React.SetStateAction<OrderScheduleArray>>;
+  
+  hilOrderSchedules: OrderScheduleArray;
+  setHILOrderSchedules: React.Dispatch<React.SetStateAction<OrderScheduleArray>>;
+  
+  periods: number;
+  setPeriods: (periods: number) => void;
+  
+  samples: number;
+  setSamples: (samples: number) => void;
+  
+  selectedDataSource: string;
+  setSelectedDataSource: (source: string) => void;
+  
+  selectedAlgorithm: string;
+  setSelectedAlgorithm: (algorithm: string) => void;
 }
 
-export const AppContext = createContext<AppContextType>({} as AppContextType);
+// Create context with a default empty state
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const useAppContext = () => useContext(AppContext);
+// Create provider component
+interface AppProviderProps {
+  children: ReactNode;
+}
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load API URL from cookie
-  const [apiBaseUrl, setApiBaseUrl] = useState(() => {
-    const saved = localStorage.getItem('apiBaseUrl');
-    return saved || 'https://api-url-not-set.com';
-  });
-
-  const [periods, setPeriodState] = useState(getPERIODS());
-  const [samples, setSamplesState] = useState(getSAMPLES());
+export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  // State for production scenarios
+  const [productionScenarios, setProductionScenarios] = useState<ProductionScenarioArray>(
+    generateRandomProductionScenarioArray()
+  );
   
-  const [selectedDataSource, setSelectedDataSourceState] = useState<DataSource>(() => {
-    const currentDataSource = getSELECTEDDATASOURCE();
-    return Object.keys(currentDataSource).length ? 
-           currentDataSource : 
-           RandomDataSource();
-  });
-
-  const [selectedAlgorithm, setSelectedAlgorithmState] = useState<string>(() => {
-    const currentAlgo = getSELECTEDALGORITHM();
-    return Object.keys(currentAlgo).length ? 
-           currentAlgo.Name : 
-           'SmartReplenish';
-  });
-
-  const [productionScenarios, setProductionScenarios] = useState<ProductionScenarioArray>([]);
+  // State for order schedules (batch)
   const [orderSchedules, setOrderSchedules] = useState<OrderScheduleArray>([]);
-  const [manualOrderSchedules, setManualOrderSchedules] = useState<OrderScheduleArray>([]);
-
-  // Update the API URL in localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('apiBaseUrl', apiBaseUrl);
-  }, [apiBaseUrl]);
-
-  // Custom setters that update both state and global variables
+  
+  // State for human-in-the-loop order schedules
+  const [hilOrderSchedules, setHILOrderSchedules] = useState<OrderScheduleArray>([]);
+  
+  // State for periods
+  const [periods, setPeriodsState] = useState<number>(getPERIODS());
+  
+  // State for samples
+  const [samples, setSamplesState] = useState<number>(getSAMPLES());
+  
+  // State for selected data source
+  const [selectedDataSource, setSelectedDataSourceState] = useState<string>("Random");
+  
+  // State for selected algorithm
+  const [selectedAlgorithm, setSelectedAlgorithmState] = useState<string>("SmartReplenish");
+  
+  // Wrap the setState functions to also update global values
   const setPeriods = (value: number) => {
     setPERIODS(value);
-    setPeriodState(getPERIODS());
+    setPeriodsState(value);
   };
-
+  
   const setSamples = (value: number) => {
     setSAMPLES(value);
-    setSamplesState(getSAMPLES());
+    setSamplesState(value);
   };
-
-  const setSelectedDataSource = (source: DataSource) => {
-    setSELECTEDDATASOURCE(source);
-    setSelectedDataSourceState(source);
-  };
-
-  const setSelectedAlgorithm = (name: string) => {
-    const algo = algorithms[name];
-    if (algo) {
-      setSELECTEDALGORITHM(algo);
-      setSelectedAlgorithmState(name);
+  
+  const setSelectedDataSource = (value: string) => {
+    if (dataSources[value]) {
+      const source = typeof dataSources[value] === 'function' ? dataSources[value]() : dataSources[value];
+      setSELECTEDDATASOURCE(source);
+      setSelectedDataSourceState(value);
+      
+      // Update production scenarios from data source
+      setProductionScenarios(source.ProductionScenarioArray);
     }
   };
-
-  // Set initial values
-  useEffect(() => {
-    // Set default algorithm
-    if (selectedAlgorithm === 'SmartReplenish' && !getSELECTEDALGORITHM().Name) {
-      setSELECTEDALGORITHM(SmartReplenishAlgorithm);
+  
+  const setSelectedAlgorithm = (value: string) => {
+    if (algorithms[value]) {
+      setSELECTEDALGORITHM(algorithms[value]);
+      setSelectedAlgorithmState(value);
     }
-    
-    // Set default data source if not already set
-    if (!selectedDataSource.Name) {
-      const randomSource = RandomDataSource();
-      setSelectedDataSource(randomSource);
-      setProductionScenarios(randomSource.ProductionScenarioArray);
-    } else {
-      setProductionScenarios(selectedDataSource.ProductionScenarioArray);
-    }
+  };
+  
+  // Initialize with default data source and algorithm
+  React.useEffect(() => {
+    setSelectedDataSource(selectedDataSource);
+    setSelectedAlgorithm(selectedAlgorithm);
   }, []);
+  
+  // Create the context value object
+  const contextValue: AppContextType = {
+    productionScenarios,
+    setProductionScenarios,
+    orderSchedules,
+    setOrderSchedules,
+    hilOrderSchedules,
+    setHILOrderSchedules,
+    periods,
+    setPeriods,
+    samples,
+    setSamples,
+    selectedDataSource,
+    setSelectedDataSource,
+    selectedAlgorithm,
+    setSelectedAlgorithm,
+  };
+  
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+};
 
-  return (
-    <AppContext.Provider value={{
-      apiBaseUrl,
-      setApiBaseUrl,
-      periods,
-      setPeriods,
-      samples,
-      setSamples,
-      selectedDataSource,
-      setSelectedDataSource,
-      selectedAlgorithm,
-      setSelectedAlgorithm,
-      productionScenarios,
-      setProductionScenarios,
-      orderSchedules,
-      setOrderSchedules,
-      manualOrderSchedules,
-      setManualOrderSchedules
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
+// Custom hook for using the context
+export const useAppContext = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useAppContext must be used within an AppProvider');
+  }
+  return context;
 };
