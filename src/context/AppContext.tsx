@@ -111,7 +111,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   
   const setSelectedAlgorithm = (value: string) => {
     if (algorithms[value]) {
-      setSELECTEDALGORITHM(algorithms[value]);
+      // Pass algorithm name and object to global setter
+      const algorithmObj = algorithms[value];
+      // Make a safe cast to ensure TypeScript is happy
+      setSELECTEDALGORITHM(algorithmObj as any);
       setSelectedAlgorithmState(value);
     }
   };
