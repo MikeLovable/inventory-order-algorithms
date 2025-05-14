@@ -46,6 +46,11 @@ export default function ManualTab() {
     <div className="space-y-6 p-4">
       <DataSourceSelector />
       
+      <AlgorithmSelector 
+        onOrderSchedulesGenerated={handleOrderSchedulesGenerated}
+        selectedOnly={true}
+      />
+      
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-xl font-bold mb-4">Production Scenarios</h2>
         <ProductionScenarioTable 
@@ -53,11 +58,6 @@ export default function ManualTab() {
           onScenarioSelectionChange={handleScenarioSelectionChange}
         />
       </div>
-      
-      <AlgorithmSelector 
-        onOrderSchedulesGenerated={handleOrderSchedulesGenerated}
-        selectedOnly={true}
-      />
       
       <div ref={resultRef} className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-xl font-bold mb-4">Manual Order Schedule</h2>

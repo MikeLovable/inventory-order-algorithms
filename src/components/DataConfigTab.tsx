@@ -123,6 +123,35 @@ export default function DataConfigTab() {
           </div>
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Data Sources</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border p-2 text-left">Name</th>
+                  <th className="border p-2 text-left">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(dataSources).map(([key, source]) => {
+                  const dataSource = typeof source === 'function' ? source() : source;
+                  return (
+                    <tr key={key} className="hover:bg-gray-50">
+                      <td className="border p-2">{dataSource.Name}</td>
+                      <td className="border p-2">{dataSource.Desc}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
