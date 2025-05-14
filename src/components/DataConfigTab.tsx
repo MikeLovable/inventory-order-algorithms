@@ -29,7 +29,7 @@ export default function DataConfigTab() {
   const [periodsInput, setPeriodsInput] = useState(periods.toString());
   const [samplesInput, setSamplesInput] = useState(samples.toString());
   const [scenarioJson, setScenarioJson] = useState(() => {
-    return JSON.stringify(selectedDataSource.ProductionScenarioArray, null, 2);
+    return JSON.stringify(selectedDataSource.ProductionScenarioArray || [], null, 2);
   });
 
   const handleSaveApiUrl = () => {

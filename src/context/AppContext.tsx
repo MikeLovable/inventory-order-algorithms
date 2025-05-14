@@ -32,11 +32,14 @@ interface AppContextType {
   samples: number;
   setSamples: (samples: number) => void;
   
-  selectedDataSource: string;
-  setSelectedDataSource: (source: string) => void;
+  selectedDataSource: DataSource;
+  setSelectedDataSource: (source: DataSource | string) => void;
   
   selectedAlgorithm: string;
   setSelectedAlgorithm: (algorithm: string) => void;
+  
+  apiBaseUrl: string;
+  setApiBaseUrl: (url: string) => void;
 }
 
 // Create context with a default empty state
@@ -66,10 +69,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [samples, setSamplesState] = useState<number>(getSAMPLES());
   
   // State for selected data source
-  const [selectedDataSource, setSelectedDataSourceState] = useState<string>("Random");
+  const [selectedDataSource, setSelectedDataSourceState] = useState<DataSource>(() => {
+    // Initialize with Random data source
+    const source = typeof dataSources["Random"] === 'function' 
+      ? dataSources["Random"]() 
+      : dataSources["Random"];
+    return source as DataSource;
+  });
   
   // State for selected algorithm
   const [selectedAlgorithm, setSelectedAlgorithmState] = useState<string>("SmartReplenish");
+  
+  // State for API base URL
+  const [apiBaseUrl, setApiBaseUrl] = useState<string>("https://api.example.com");
   
   // Wrap the setState functions to also update global values
   const setPeriods = (value: number) => {
@@ -82,14 +94,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setSamplesState(value);
   };
   
-  const setSelectedDataSource = (value: string) => {
-    if (dataSources[value]) {
-      const source = typeof dataSources[value] === 'function' ? dataSources[value]() : dataSources[value];
-      setSELECTEDDATASOURCE(source);
+  const setSelectedDataSource = (value: DataSource | string) => {
+    if (typeof value === 'string') {
+      // If string is provided, look up the data source by name
+      if (dataSources[value]) {
+        const source = typeof dataSources[value] === 'function' ? dataSources[value]() : dataSources[value];
+        setSELECTEDDATASOURCE(source as DataSource);
+        setSelectedDataSourceState(source as DataSource);
+      }
+    } else {
+      // If DataSource object is provided, use it directly
+      setSELECTEDDATASOURCE(value);
       setSelectedDataSourceState(value);
-      
-      // Update production scenarios from data source
-      setProductionScenarios(source.ProductionScenarioArray);
     }
   };
   
@@ -102,7 +118,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   
   // Initialize with default data source and algorithm
   React.useEffect(() => {
-    setSelectedDataSource(selectedDataSource);
+    // Initialize algorithm
     setSelectedAlgorithm(selectedAlgorithm);
   }, []);
   
@@ -122,6 +138,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setSelectedDataSource,
     selectedAlgorithm,
     setSelectedAlgorithm,
+    apiBaseUrl,
+    setApiBaseUrl,
   };
   
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

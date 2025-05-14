@@ -45,7 +45,7 @@ export default function DataSourceSelector({ onDataSourceChange }: DataSourceSel
         ? (dataSources[selectedName] as Function)() 
         : dataSources[selectedName];
         
-      setSelectedDataSource(source as any);
+      setSelectedDataSource(source);
       setProductionScenarios(scenarios);
       
       const endTime = performance.now();
@@ -86,7 +86,7 @@ export default function DataSourceSelector({ onDataSourceChange }: DataSourceSel
       
       if (source) {
         const updatedSource = {
-          ...source as any,
+          ...source,
           ProductionScenarioArray: data
         };
         setSelectedDataSource(updatedSource);
